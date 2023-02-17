@@ -1,16 +1,19 @@
 <template>
-  <panel-item :field="field">
-    <template slot="value">
+  <PanelItem :index="index" :field="field">
+    <template #value>
       <TableBody
-        v-if="field.headers.length > 0"
+        v-if="theData.length > 0"
         :edit-mode="false"
         class="overflow-hidden"
       >
         <TableHeader :headers="field.headers"/>
 
-        <div class="bg-white overflow-hidden key-value-items">
+        <div
+          class="bg-gray-50 dark:bg-gray-700 overflow-hidden key-value-items"
+        >
           <TableItem
-            v-for="item in theData"
+            v-for="(item, index) in theData"
+            :index="index"
             :item="item"
             :disabled="true"
             :key="item.key"
@@ -18,7 +21,7 @@
         </div>
       </TableBody>
     </template>
-  </panel-item>
+  </PanelItem>
 </template>
 
 <script>
@@ -45,6 +48,7 @@ export default {
         values
       }
     });
+    console.log(this.theData);
   },
 }
 </script>

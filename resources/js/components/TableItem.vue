@@ -1,24 +1,33 @@
 <template>
-  <div class="flex items-center key-value-item">
-    <div class="flex flex-grow border-b border-50 key-value-fields">
+  <div class="flex items-center table-item">
+    <div
+      class="flex flex-grow border-b border-gray-200 dark:border-gray-700 table-fields"
+    >
       <div
-        class="flex-grow"
+        class="flex-grow border-l border-gray-200 dark:border-gray-700"
+        :class="[
+          !isEditable
+            ? 'bg-gray-50 dark:bg-gray-800'
+            : 'bg-white dark:bg-gray-900',
+        ]"
         v-for="(cell, index) in cells"
-        :key="index"
-        :class="index > 0 ? 'border-l border-50' : 'cursor-text'"
       >
         <textarea
-          :dusk="`table-field-key-${index}`"
-          v-model="cells[index]"
-          @focus="handleCellFocus(index)"
-          ref="cell"
+          rows="1"
+          :dusk="`table-key-${index}`"
+          v-model="item.values[index]"
+          @focus="handleCellFocus"
+          ref="keyField"
           type="text"
-          class="font-mono text-sm resize-none block min-h-input w-full form-control form-input form-input-row py-4 text-90"
-          :disabled="!isEditable"
-          style="background-clip: border-box;"
+          class="font-mono text-xs resize-none block w-full px-3 py-3 dark:text-gray-400 bg-clip-border focus:outline-none focus:ring focus:ring-inset"
+          :readonly="!isEditable"
+          :tabindex="!isEditable ? -1 : 0"
+          style="background-clip: border-box"
           :class="{
-            'bg-white': !isEditable,
-            'hover:bg-20 focus:bg-white': isEditable,
+            'bg-white dark:bg-gray-800 focus:outline-none cursor-not-allowed':
+              !isEditable,
+            'hover:bg-20 focus:bg-white dark:bg-gray-900 dark:focus:bg-gray-900':
+              isEditable,
           }"
         />
       </div>
@@ -26,18 +35,18 @@
 
     <div
       v-if="isEditable"
-      class="flex justify-center h-11 w-11 absolute"
-      style="right: -50px"
+      class="flex justify-center h-11 w-11 absolute -right-[50px]"
     >
-      <button
+      <BasicButton
         @click="$emit('remove-row', item.id)"
+        :dusk="`remove-table-${index}`"
         type="button"
-        tabindex="-1"
-        class="flex appearance-none cursor-pointer text-70 hover:text-primary active:outline-none active:shadow-outline focus:outline-none focus:shadow-outline"
-        title="Delete"
+        tabindex="0"
+        class="flex items-center appearance-none cursor-pointer text-red-500 hover:text-red-600 active:outline-none active:ring focus:outline-none focus:ring ring-primary-200 dark:ring-gray-600"
+        :title="__('Delete')"
       >
-        <icon/>
-      </button>
+        <Icon type="minus-circle" />
+      </BasicButton>
     </div>
   </div>
 </template>

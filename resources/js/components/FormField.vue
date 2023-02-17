@@ -1,10 +1,20 @@
 <template>
-  <default-field :field="field" :errors="errors" :full-width-content="true">
-    <template slot="field">
-      <TableBody>
-        <TableHeader :headers="field.headers"/>
+  <DefaultField
+    :field="currentField"
+    :errors="errors"
+    :full-width-content="mode === 'modal'"
+    :show-help-text="showHelpText"
+  >
+    <template #field>
+      <TableBody
+        :edit-mode="!currentlyIsReadonly"
+        :can-delete-row="currentField.canDeleteRow"
+      >
+        <TableHeader
+          :headers="field.headers"
+        />
 
-        <div class="bg-white overflow-hidden key-value-items">
+        <div class="bg-white overflow-hidden table-items">
           <TableItem
             v-for="(item, index) in theData"
             :index="index"
@@ -12,30 +22,35 @@
             :item.sync="item"
             :key="item.id"
             :ref="item.id"
-            :read-only="field.readonly"
           />
         </div>
       </TableBody>
 
-      <div class="mr-11" v-if="!field.readonly">
+      <div class="mr-11">
         <button
           @click="addRowAndSelect"
+          :dusk="`${field.attribute}-add-table`"
           type="button"
-          class="btn btn-link dim cursor-pointer rounded-lg mx-auto text-primary mt-3 px-3 rounded-b-lg flex items-center"
+          class="cursor-pointer focus:outline-none focus:ring ring-primary-200 dark:ring-gray-600 focus:ring-offset-4 dark:focus:ring-offset-gray-800 rounded-lg mx-auto text-primary-500 font-bold link-default mt-3 px-3 rounded-b-lg flex items-center"
         >
-          <icon type="add" width="24" height="24" view-box="0 0 24 24"/>
-          <span class="ml-1">{{ field.actionText }}</span>
+          <Icon type="plus-circle" />
+          <span class="ml-1">{{ currentField.actionText }}</span>
         </button>
       </div>
     </template>
-  </default-field>
+  </DefaultField>
 </template>
 
 <script>
-import {FormField, HandlesValidationErrors} from 'laravel-nova'
 import TableBody from "./TableBody";
 import TableHeader from "./TableHeader";
 import TableItem from "./TableItem";
+import findIndex from 'lodash/findIndex'
+import fromPairs from 'lodash/fromPairs'
+import map from 'lodash/map'
+import reject from 'lodash/reject'
+import tap from 'lodash/tap'
+import { FormField, HandlesValidationErrors } from 'laravel-nova'
 
 function guid() {
   var S4 = function () {
@@ -63,42 +78,51 @@ export default {
 
   props: ['resourceName', 'resourceId', 'field'],
 
-  data: () => ({
-    theData: [],
-  }),
+  data: () => ({ theData: [] }),
 
-  created() {
-    this.theData = this.field.value.map(item => {
-      const values = this.field.headers.map(header => _.get(item, _.snakeCase(header)));
-
-      return {
-        id: guid(),
-        values
-      };
-    });
+  mounted() {
+    this.populateKeyValueData()
   },
 
   methods: {
     /*
-     * Set the initial, internal value for the field.
+     * Set the initial value for the field
      */
-    setInitialValue() {
-      this.value = this.field.value || ''
+    populateKeyValueData() {
+      this.theData = this.field.value.map(item => {
+        const values = this.field.headers.map(header => _.get(item, _.snakeCase(header)));
+
+        return {
+          id: guid(),
+          values
+        };
+      });
+
+      if (this.theData.length == 0) {
+        this.addRow()
+      }
+      console.log(this.theData);
     },
 
     /**
-     * Fill the given FormData object with the field's internal value.
+     * Provide a function that fills a passed FormData object with the
+     * field's internal value attribute.
      */
     fill(formData) {
-      formData.append(this.field.attribute, JSON.stringify(this.finalPayload))
+      this.fillIfVisible(
+        formData,
+        this.field.attribute,
+        JSON.stringify(this.finalPayload)
+      )
     },
 
     /**
      * Add a row to the table.
      */
     addRow() {
-      return _.tap(guid(), id => {
-        this.theData = [...this.theData, {id, values: this.field.headers.map(header => null)}]
+      return tap(guid(), id => {
+        const emptyValues = this.field.headers.map(() => '');
+        this.theData = [...this.theData, { id, values: emptyValues }]
         return id
       })
     },
@@ -114,8 +138,8 @@ export default {
      * Remove the row from the table.
      */
     removeRow(id) {
-      return _.tap(
-        _.findIndex(this.theData, row => row.id == id),
+      return tap(
+        findIndex(this.theData, row => row.id == id),
         index => this.theData.splice(index, 1)
       )
     },
@@ -125,8 +149,12 @@ export default {
      */
     selectRow(refId) {
       return this.$nextTick(() => {
-        this.$refs[refId][0].$refs.cell[0].select()
+        this.$refs[refId][0].handleCellFocus()
       })
+    },
+
+    onSyncedField() {
+      this.populateKeyValueData()
     },
   },
 
@@ -141,7 +169,13 @@ export default {
 
         this.field.headers.forEach((header, index)=> {
           const key = _.snakeCase(header);
-          result[key] = _.get(values, index);
+          let value = _.get(values, index);
+
+          if (value === 'true' || value === 'false') {
+            value = value === 'true';
+          }
+
+          result[key] = value;
         });
 
         return result;
